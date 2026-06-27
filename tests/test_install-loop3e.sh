@@ -47,6 +47,13 @@ assert_contains "$TMP_HOME/agents/loop_generator.toml" 'model_provider = "loop3e
 assert_contains "$TMP_HOME/agents/loop_evaluator.toml" 'model_provider = "loop3e_evaluator"'
 assert_contains "$TMP_HOME/agents/loop_generator.toml" 'model = "MiniMax-M3"'
 assert_contains "$TMP_HOME/agents/loop_evaluator.toml" 'model = "deepseek-v4-pro"'
+assert_contains "$TMP_HOME/agents/loop_generator.toml" 'model_reasoning_effort = "medium"'
+assert_contains "$TMP_HOME/agents/loop_evaluator.toml" 'model_reasoning_effort = "high"'
+
+mkdir -p "$TMP_HOME/skills/mloop.bak.20000101000000"
+cp "$TMP_HOME/skills/mloop/SKILL.md" "$TMP_HOME/skills/mloop.bak.20000101000000/SKILL.md"
 
 "$INSTALLER" --apply --codex-home "$TMP_HOME" >/tmp/loop3e-apply-again.out
 test ! -e "$TMP_HOME/config.toml"
+test ! -e "$TMP_HOME/skills/mloop.bak.20000101000000"
+find "$TMP_HOME/backups/loop3e" -path '*/skills/mloop.bak.20000101000000/SKILL.md' | grep -q .

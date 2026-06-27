@@ -1,109 +1,103 @@
 ---
 name: mloop
-description: Use Superpowers spec/plan workflow with Root-as-Planner plus Generator/Evaluator agents, spec review, dual plan review, independent evaluation, automatic repair loops, and evolution proposal. Use for non-trivial coding tasks, mloop/loop3e requests, multi-model workflows, independent evaluation, evidence-based acceptance, and evolution loops.
+description: 当用户明确请求 "$mloop"、"mloop"、"loop3e"、多模型闭环、独立验收，或任务需要可验证的 spec/plan/evaluation 时使用。
 ---
 
-# Loop3E + Superpowers Workflow
+# Loop3E + Superpowers 工作流
 
-Use this skill when the user asks for `mloop`, `loop3e`, multi-model development, independent evaluation, non-trivial implementation, bug fixes with validation, refactors with tests, or evidence-based acceptance.
+## 概览
 
-Do not use it for trivial one-line edits, pure explanation, pure translation, or tasks unrelated to code/technical docs.
+`mloop` 是 Root + `loop_generator` + `loop_evaluator` 的三角色闭环。Root 负责用户意图、spec、门禁和汇总；Generator 负责 plan、实现和修复；Evaluator 负责独立证据验收。Generator 必须以 `loop_generator` 派发；Evaluator 必须以 `loop_evaluator` 派发。
 
-## Role Mapping
+不要用于一行修改、纯解释、纯翻译，或与代码/技术文档无关的任务。用户显式请求 `mloop` 时，不得降级成 Root inline 实现；如果当前 Codex surface 不能 spawn subagent，Root 必须 `STOP`。
 
-- Root Codex: owns conversation, clarification, spec drafting, acceptance criteria, gate routing, and final summary.
-- Generator: `loop_generator`, model `MiniMax-M3`
-- Evaluator: `loop_evaluator`, model `deepseek-v4-pro`, provider `loop3e_evaluator`
+## 快速流程
 
-## Artifact Ownership
+1. Root 调用 `superpowers:using-superpowers`。
+2. Root 记录 `loop_root` 为当前工作目录绝对路径，检查 git status，并初始化 `.loop3e/run_log.md`。
+3. Root 在写 spec 前调用 `superpowers:brainstorming`；无法表达质量目标时，只问一个澄清问题。
+4. Root 写 `docs/superpowers/specs/YYYY-MM-DD-<feature>-design.md`，并更新 `.loop3e/current_spec.txt`。
+5. Root 进入 Goal Creation Gate：mloop 启动时不得立刻调用 `create_goal`；Root 写完 spec 并更新 `.loop3e/current_spec.txt` 后，才进入 Goal Creation Gate。
+6. Root 只以 `PLAN_WRITE_MODE` 派发 `loop_generator`；Generator 读取 spec；有问题返回 `SPEC_ISSUE`，否则写 plan；Generator 必须调用 `superpowers:writing-plans` 写 `docs/superpowers/plans/...-implementation.md` 和 `.loop3e/current_plan.txt`。
+7. Root 不做 plan 细节评审；Evaluator 一次性评审 spec+plan package，并写 `.loop3e/package_review.json`。
+8. `.loop3e/package_review.json` 为 `APPROVED` 后，Generator 才能使用 `superpowers:subagent-driven-development` 或 `superpowers:executing-plans` 执行。
+9. `REQUEST_CHANGES` 回 Generator 修改 plan；`SPEC_ISSUE` 回 Root 修改 spec；`ASK_USER`/`STOP` 停止。
+10. 代码行为变更触发 TDD；失败、bug 或 Evaluator `FAIL` 触发 debugging；review findings 触发 receiving-code-review。
+11. 声明完成前，Root 调用 `superpowers:verification-before-completion` 并记录新鲜验证证据。
+12. Root 写 Evaluator 新鲜度守卫后派发 `loop_evaluator`：覆盖 `.loop3e/verdict.json` 为 `PENDING`，覆盖 `.loop3e/evaluator_report.md` 为 pending note。
+13. `FAIL` 时 Generator 只修阻塞问题；实现/评估最多 3 轮。`PASS` 后 Root 做产品验收和最终总结；Evaluator fresh `PASS` 后，Root 必须做产品验收；通过后才做最终总结；改进建议写在最终回复里，不默认落额外过程文件。
 
-Superpowers owns long-lived assets:
+## 铁律
 
-- `docs/superpowers/specs/`
-- `docs/superpowers/plans/`
+- 质量 > 效率 > 成本；token 或速度优化不得删除 review、verification、Superpowers phase gate、Generator/Evaluator 调度或验收证据。
+- Root 必须通过 Codex subagent 机制启动 `loop_generator` 和 `loop_evaluator`；不得 inline 承担 Generator 工作。
+- 使用 explicit agent type 时，Root 不得使用 full-history fork；交接只传 `loop_root`、artifact 路径和短 phase brief，不粘贴完整 spec、plan、diff 或 report。
+- Root spec 只写需求和验收，不写具体实现选择；Root 不得创建或更新 `docs/superpowers/plans/` 或 `.loop3e/current_plan.txt`，也不做 plan 细节评审。
+- Root spec 必须区分：用户明确要求、Root 推断假设、待用户确认、用户已接受的降级。Root 不能把推断假设当作用户授权。
+- Goal objective 只引用当前 spec 的绝对路径和完成标准，不写 spec 摘要。模板：`Loop3E: complete <absolute spec path>. Done only after approved plan, Generator implementation, fresh Evaluator PASS, Root product acceptance, and recorded verification.`
+- Root 只授权执行边界，不拆分实现子任务；是否并行、如何拆分和最终集成由 Generator 在 approved package 内决定。
+- Generator 实现前必须读取 `.loop3e/package_review.json`；非 `APPROVED` 不得写业务代码。
+- Evaluator verdict 必须新鲜：Root 只根据写入 PENDING 后的文件系统元数据判断 freshness，不信任模型生成的 timestamp。
+- 只有 fresh 且 `status=PASS` 的 Evaluator verdict 可以进入 Root 产品验收。
+- Evaluator PASS + Root 产品验收通过，才能宣称完成。
 
-Loop3E owns runtime artifacts under `.loop3e/`.
+## Goal Creation Gate
 
-Do not create `.loop3e/spec.md` or `.loop3e/acceptance.md`; point to the Superpowers spec and plan instead.
+Goal 是 Codex runtime 的长任务控制面，不是 spec/plan/verdict 的存储层。spec 是事实源，goal 只指向当前 spec。
 
-## Required Runtime Files
+Root 写完 spec 并更新 `.loop3e/current_spec.txt` 后，先确认 spec 没有待用户确认、未授权降级或不可验证 acceptance。若存在这些问题，先 `ASK_USER`，不创建 goal。
 
-Create `.loop3e/` only when a loop run starts. Use these files:
+Root 先调用 `get_goal`：
 
-```text
-.loop3e/current_spec.txt
-.loop3e/current_plan.txt
-.loop3e/spec_review.json
-.loop3e/spec_review.md
-.loop3e/plan_review.json
-.loop3e/plan_review.md
-.loop3e/current_batch.md
-.loop3e/generator_report.md
-.loop3e/verdict.json
-.loop3e/evaluator_report.md
-.loop3e/lessons.md
-.loop3e/evolution_proposal.md
-.loop3e/rule_update_proposal.md
-.loop3e/regression_candidates.md
-.loop3e/run_log.md
-```
+- 没有 active goal 时调用 `create_goal`，objective 使用当前 spec 绝对路径模板。
+- active goal 已包含当前 spec 绝对路径时复用，并写入 `.loop3e/run_log.md`。
+- active goal 与当前 spec 不匹配时 `ASK_USER`，不得覆盖或静默降级。
+- goal 工具不可用或 goal feature 未开启时 `ASK_USER`，提示开启 goals 或明确接受 file-only loop 降级。
 
-## Gate Policy
+只有 Evaluator fresh `PASS`、Root 产品验收通过且验证证据已记录后，才调用 `update_goal(status="complete")`。只有同一阻塞条件连续 3 轮且无法继续推进，才调用 `update_goal(status="blocked")`。`ASK_USER`、普通 `REQUEST_CHANGES`、单次 provider 超时或一次 Evaluator `FAIL` 不得标记 blocked。
 
-- `APPROVED`: continue.
-- `REQUEST_CHANGES`: route back to the author role automatically.
-- `SPEC_ISSUE`: route to Root for spec clarification or user question.
-- `ASK_USER`: stop and ask the user.
-- `STOP`: stop and summarize.
-- `PASS`: enter Evolution Review.
-- `FAIL`: route blocking findings back to Generator.
+## 角色契约
 
-Ask the user only for business decisions, scope changes, compatibility decisions, destructive migrations, API breaks, security/permission/billing/data-consistency trade-offs, external credentials, production access, loop limit exceeded, or repeated role conflict.
+- Root：编排者和冲突仲裁者。输出 P0 意图、不做事项、质量标准、未决问题、风险、角色交接、门禁决策和产品验收结论。每个 gate 后输出 6 行以内 checkpoint：phase、artifact、blocking、next。
+- Generator：目标产物负责人。输出实现决策、变更产物、质量提升、验证命令和剩余风险；在不扩大 scope、不修改 spec、不破坏验收的前提下提升目标产物质量。
+- Evaluator：独立证据裁判。输出裁决、阻塞问题、证据、复现方式、非阻塞建议和回归候选。阻塞问题必须具体、可复现、可定位、可由 Generator 修复；建议和个人偏好不得阻塞 PASS。
 
-## Root Checkpoints
+## 运行产物
 
-After each gate, Root must emit a short user-visible checkpoint so the user has control without opening files.
+Superpowers 长期产物：`docs/superpowers/specs/`、`docs/superpowers/plans/`。
 
-Use this shape:
+Loop3E 默认运行产物只保留：`current_spec.txt`、`current_plan.txt`、`package_review.json`、`generator_report.md`、`verdict.json`、`evaluator_report.md`、`run_log.md`。
 
-```text
-<Phase>: <STATUS>
-- artifact: <path>
-- blocking: <none|count and short reason>
-- next: <next action>
-```
+不要默认创建额外过程文件；spec/plan 细节属于 `docs/superpowers/`，经验、演进建议和回归候选写进最终回复。只有用户明确要求持久沉淀时，才另建文档。
 
-Keep normal checkpoint output under 6 lines. Expand only for `ASK_USER`, `STOP`, `FAIL`, or when the user asks for details.
+Generator plan 必须以紧凑的 `Gate Summary` 开头，覆盖 scope、files、tests、risks 和 acceptance mapping。Root 先读 plan 前 80 行；只有 summary 缺失、自相矛盾或存在阻塞时才读完整 plan。
 
-## Superpowers Skill Map
+Superpowers skill 是工程纪律，不是官僚关卡。不要为了使用 skill 而使用 skill；TDD、debugging、code review、parallel agents、finishing branch 按触发条件使用，触发原因必须能服务当前目标产物质量。
 
-- Root MUST invoke `superpowers:using-superpowers` at mloop start. This loads the Superpowers invocation discipline; it does not replace the phase gates below.
-- Root MUST invoke `superpowers:brainstorming` before spec drafting.
-- Generator MUST invoke `superpowers:writing-plans` before plan drafting.
-- For approved plan execution, Generator MUST use either `superpowers:subagent-driven-development` or `superpowers:executing-plans`; choose the lighter fit for task shape and available subagents.
-- Before any completion claim, Root MUST invoke `superpowers:verification-before-completion`.
-- Use conditional Superpowers skills when their trigger applies: `superpowers:test-driven-development` for code behavior changes, `superpowers:systematic-debugging` for bugs/test failures/Evaluator `FAIL`, `superpowers:receiving-code-review` for review findings, `superpowers:requesting-code-review` for substantial code diffs that need an extra independent review, `superpowers:using-git-worktrees` when isolation is needed, and `superpowers:finishing-a-development-branch` only when the user asks to merge, PR, clean up, or discard.
-- Consider `superpowers:dispatching-parallel-agents` only when there are 2+ independent problem domains and subagents will not edit the same files.
+IMPLEMENT_MODE 中，Generator 可在 approved package 内自主选择直接执行或并行执行。只有存在 2 个以上文件所有权清晰、可独立验证、不会编辑同一批文件的任务时才并行；并行前写紧凑 execution split，说明每个子任务的 files/checks/交付物，并由 Generator 负责最终集成和验证。
 
-## Workflow
+P0 需求包含外部系统、相邻仓库、第三方服务或生产配置时，必须把真实边界交付纳入 spec、package review、final evaluation 和 Root 产品验收。只写文档或替代验证不等于真实交付；除非 spec 明确记录用户接受降级，否则 package review 返回 `SPEC_ISSUE`，final evaluation 或 Root 产品验收返回 `FAIL`。
 
-1. Root MUST invoke `superpowers:using-superpowers`.
-2. Inspect git status and append safety notes to `.loop3e/run_log.md`.
-3. Root MUST invoke `superpowers:brainstorming` before drafting a spec. Use it to explore context, ask one clarifying question at a time, present a short design, and get user approval.
-4. After brainstorming approval, Root creates or updates `docs/superpowers/specs/YYYY-MM-DD-<feature>-design.md` and writes `.loop3e/current_spec.txt`.
-5. Evaluator reviews spec verifiability; Generator reviews spec feasibility; Root writes `.loop3e/spec_review.json`.
-6. Generator MUST invoke `superpowers:writing-plans` to create `docs/superpowers/plans/YYYY-MM-DD-<feature>-implementation.md` and write `.loop3e/current_plan.txt`.
-7. Root reviews plan alignment; Evaluator reviews plan verifiability; Root writes `.loop3e/plan_review.json`.
-8. Generator must read `.loop3e/plan_review.json` before implementation. Continue only when status is `APPROVED`; revise the plan on `REQUEST_CHANGES`; stop on `SPEC_ISSUE`, `ASK_USER`, or `STOP`.
-9. Generator MUST use either `superpowers:subagent-driven-development` or `superpowers:executing-plans` to execute the approved plan.
-10. Use conditional Superpowers skills when their trigger applies, especially debugging/TDD/review skills for code changes or failures.
-11. Before any completion claim, Root MUST invoke `superpowers:verification-before-completion` and record fresh verification evidence.
-12. Evaluator independently verifies implementation and writes `.loop3e/verdict.json` plus `.loop3e/evaluator_report.md`.
-13. On `FAIL`, Generator fixes only `blocking_findings`; repeat up to 3 implementation/evaluation rounds.
-14. On `PASS`, Root owns evolution aggregation. Generator and Evaluator may contribute evidence through reports, but Root produces `.loop3e/lessons.md`, `.loop3e/evolution_proposal.md`, `.loop3e/rule_update_proposal.md`, and `.loop3e/regression_candidates.md`.
+Root 产品验收检查原始用户目标、输出/UX/API 行为、范围边界和 human approval。Root 只做产品验收，不替代 Evaluator 的代码级证据裁判；若产品验收不通过，回 Generator 修复或 `ASK_USER`。
 
-Do not auto-commit, push, create PRs, update `AGENTS.md`, update skills, or solidify evolution proposals without explicit user approval.
+Evolution 默认只由 Root 聚合，不触发 subagent 并行验收，不阻塞完成；只有用户明确要求复盘、沉淀规则或生成回归资产时，才作为新任务处理。
 
-## Final Response
+## 停止和询问用户
 
-Include summary, spec path, plan path, changed files, tests/checks run, evaluator verdict, remaining risks, evolution proposals, and whether human approval is needed. Do not claim success unless Evaluator returned `PASS`.
+只有遇到业务决策、范围变更、兼容性决策、破坏性迁移、API break、安全/权限/计费/数据一致性取舍、外部凭证、生产访问、循环次数超限或重复角色冲突时，才询问用户。
+
+门禁含义：`APPROVED` 继续；`REQUEST_CHANGES` 回作者；`SPEC_ISSUE` 回 Root；`ASK_USER` 问用户；`STOP` 停止；`PASS` 进入汇总；`FAIL` 回 Generator 修阻塞问题。
+
+## 常见失败
+
+- 跳过 `brainstorming` 直接写 spec。
+- Root 抢写 implementation plan、实现代码或修复。
+- `.loop3e/package_review.json` 未 `APPROVED` 就加载执行类 skill。
+- 复用旧 `.loop3e/verdict.json` 的 PASS。
+- 把建议项、审美偏好或流程不完整当作目标产物质量阻塞项。
+- 把 Agency 来源、长人设、固定技术栈或外部团队模板写进运行时提示。
+- 自动 commit、push、PR、更新 `AGENTS.md`、更新 skills 或固化 evolution proposal。
+
+## 最终回复
+
+包含 summary、spec path、plan path、changed files、tests/checks run、evaluator verdict、Root 产品验收结论、remaining risks、evolution proposals、是否需要 human approval。除非 Evaluator 返回 fresh `PASS` 且 Root 产品验收通过，否则不得宣称成功。

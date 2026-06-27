@@ -61,9 +61,27 @@ run() {
 backup_if_exists() {
   local path="$1"
   if [[ -e "$path" ]]; then
-    local backup="${path}.bak.$(date +%Y%m%d%H%M%S)"
+    local rel="${path#$CODEX_HOME/}"
+    local backup="$CODEX_HOME/backups/loop3e/$(date +%Y%m%d%H%M%S)/$rel"
+    run mkdir -p "$(dirname "$backup")"
     run cp -R "$path" "$backup"
   fi
+}
+
+cleanup_legacy_skill_backups() {
+  local legacy backup
+  shopt -s nullglob
+  for legacy in "$CODEX_HOME"/skills/mloop.bak.*; do
+    backup="$CODEX_HOME/backups/loop3e/legacy-$(date +%Y%m%d%H%M%S)/skills/$(basename "$legacy")"
+    if [[ "$APPLY" -eq 1 ]]; then
+      mkdir -p "$(dirname "$backup")"
+      mv "$legacy" "$backup"
+    else
+      log "dry-run: mkdir -p $(dirname "$backup")"
+      log "dry-run: mv $legacy $backup"
+    fi
+  done
+  shopt -u nullglob
 }
 
 install_file() {
@@ -89,6 +107,7 @@ install_dir() {
 
 install_file "$ROOT_DIR/codex/agents/loop_generator.toml" "$CODEX_HOME/agents/loop_generator.toml"
 install_file "$ROOT_DIR/codex/agents/loop_evaluator.toml" "$CODEX_HOME/agents/loop_evaluator.toml"
+cleanup_legacy_skill_backups
 install_dir "$ROOT_DIR/codex/skills/mloop" "$CODEX_HOME/skills/mloop"
 
 log "Loop3E install target: $CODEX_HOME"
