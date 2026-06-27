@@ -210,6 +210,13 @@ loop3e/
 
 更完整的设计背景见 [docs/codex-superpowers-loop3e.md](docs/codex-superpowers-loop3e.md)。
 
+## 致谢
+
+- [codex-deepseek](https://github.com/zhonghexing/codex-deepseek)：DeepSeek 接入 Codex Responses API 的协议代理参考。
+- [superpowers](https://github.com/obra/superpowers)：Loop3E 的 spec、plan、执行和验证纪律主要参考 Superpowers 的技能体系。
+- [agency-agents](https://github.com/msitarzewski/agency-agents)：Root / Generator / Evaluator 的角色边界参考了其中的多角色协作思想。
+- [agency-agents-zh](https://github.com/jnMetaCode/agency-agents-zh)：角色定义和中文语境参考来源之一。
+
 ## License
 
 [MIT](LICENSE)
