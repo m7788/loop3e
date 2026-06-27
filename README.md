@@ -100,6 +100,8 @@ scripts/install-loop3e.sh
 
 ### 3. 安装到 Codex
 
+macOS / Linux / WSL / Git Bash：
+
 ```bash
 scripts/install-loop3e.sh --apply
 ```
@@ -108,6 +110,16 @@ scripts/install-loop3e.sh --apply
 
 ```bash
 scripts/install-loop3e.sh --apply --codex-home /tmp/codex-home
+```
+
+Windows PowerShell 不直接运行这个 Bash 脚本。可以用 Git Bash / WSL 执行，或手动复制：
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\agents" | Out-Null
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.codex\skills" | Out-Null
+Copy-Item ".\codex\agents\loop_generator.toml" "$env:USERPROFILE\.codex\agents\loop_generator.toml" -Force
+Copy-Item ".\codex\agents\loop_evaluator.toml" "$env:USERPROFILE\.codex\agents\loop_evaluator.toml" -Force
+Copy-Item ".\codex\skills\mloop" "$env:USERPROFILE\.codex\skills\mloop" -Recurse -Force
 ```
 
 安装脚本只复制 `codex/agents/` 和 `codex/skills/mloop/`，不会创建或修改 `config.toml`，也不会写入 `model_providers`。
@@ -183,6 +195,8 @@ args = ["find-generic-password", "-a", "YOUR_ACCOUNT", "-s", "codex.MINIMAX_API_
 ```
 
 `auth` 和 `env_key` 不要同时配置在同一个 provider 上。确认 auth command 能直接输出 API key；否则 Generator 阶段会失败，Root 不应降级成 inline 实现。
+
+Windows 也可以用 command-backed auth，但命令应换成你自己的凭据读取方式，例如调用 PowerShell 脚本从 Windows Credential Manager 或其他密钥管理器输出 token；要求同样是 stdout 只输出 token。
 
 ### DeepSeek 做 Evaluator 有什么坑？
 
