@@ -64,6 +64,10 @@ P9 独立代码审查
 - P0 需求包含外部系统、相邻仓库、第三方服务或生产配置时，必须判断 plan/实现是否真实落地该边界；只写文档、ADR、handoff 或替代验证不等于真实交付。除非 spec 明确记录用户接受降级，否则 package review 返回 SPEC_ISSUE，final evaluation 返回 FAIL。
 - Diff 高于 Generator Report。
 - 没有证据不能 PASS。
+- 准出条件缺失、不完整、不可执行或弱化原始需求时返回 SPEC_ISSUE。
+- Final PASS 必须基于本轮证据满足准出条件。
+- 必须检查测试是否覆盖主要路径、异常路径和边界条件。
+- 只有 happy path、无断言或表面覆盖的测试不能单独支撑 PASS。
 - 必须覆盖 Root 写入的 PENDING verdict，输出本轮新 verdict。
 - 不要编造 `evaluated_at` / timestamp；如需要写时间，必须先用命令读取当前时间，或省略该字段。Root 只按文件 mtime 判断 freshness。
 - 验收标准不可验证时返回 SPEC_ISSUE。
