@@ -97,9 +97,10 @@ Preflight 输出形状：
 - Generator plan 必须把每个准出条件映射到实现任务和验证方式。
 - Evaluator package review 必须检查准出条件是否完整、可执行、未弱化原始需求。
 - Final PASS 只能基于本轮证据满足准出条件。
-- 代码行为变更必须说明测试层级：unit / integration / API / E2E / manual probe。
-- 只有 happy path、无断言或表面覆盖的测试不能单独支撑 PASS。
-- 无法自动化测试时，Generator 必须提供可复现的替代验证证据。
+- 行为变更必须说明最低成本验证方式：自动测试、模拟闭环、smoke、命令输出、日志/DB/文件检查、人工探测均可。
+- 验证证据必须覆盖关键准出条件和失败路径；只有 happy path 或无结果检查的证据不能单独支撑 PASS。
+- 硬件或外部系统无法自动化时，必须有可复现的替代验证证据。
+- 用户可见 UI 变更缺少可视证据时不得 Final PASS。
 - 不得新增单独的 exit-criteria 文档、测试矩阵模板或第二套 plan 流程。
 
 ## Goal Creation Gate
@@ -139,13 +140,7 @@ Loop3E 运行态入口：
 
 不要默认创建额外过程文件；spec/plan 细节属于 `docs/superpowers/`，经验、演进建议和回归候选写进最终回复。只有用户明确要求持久沉淀时，才另建文档。
 
-Generator plan 必须以紧凑的 `Gate Summary` 开头，覆盖 scope、files、tests、risks 和 acceptance mapping。Root 先读 plan 前 80 行；只有 summary 缺失、自相矛盾或存在阻塞时才读完整 plan。
-
 Superpowers skill 是工程纪律，不是官僚关卡。不要为了使用 skill 而使用 skill；TDD、debugging、code review、parallel agents、finishing branch 按触发条件使用，触发原因必须能服务当前目标产物质量。
-
-plan 的结构、深度、任务颗粒度和执行顺序由 `superpowers:writing-plans` 统一决定。mloop 只要求 plan 顶部提供紧凑的 `Gate Summary`，用于 Root/Evaluator 快速定位 scope、files、tests、risks 和 acceptance mapping；不得为了 token budget 压缩必要计划内容。Evaluator 做 package review 时必须按需读取完整 plan。
-
-IMPLEMENT_MODE 中，Generator 可在 approved package 内自主选择直接执行或并行执行。只有存在 2 个以上文件所有权清晰、可独立验证、不会编辑同一批文件的任务时才并行；满足并行条件时 Generator 默认并行；不并行必须在 generator_report 说明理由。并行前写紧凑 execution split，说明每个子任务的 files/checks/交付物，并由 Generator 负责最终集成和验证。
 
 P0 需求包含外部系统、相邻仓库、第三方服务或生产配置时，必须把真实边界交付纳入 spec、package review、final evaluation 和 Root 产品验收。只写文档或替代验证不等于真实交付；除非 spec 明确记录用户接受降级，否则 package review 返回 `SPEC_ISSUE`，final evaluation 或 Root 产品验收返回 `FAIL`。
 
@@ -169,7 +164,6 @@ Evolution 默认只由 Root 聚合，不触发 subagent 并行验收，不阻塞
 - 用户只批准 design 后，Root 写完 spec 就继续创建 goal 或派发 Generator；必须先停下等待用户 review written spec。
 - Root 抢写 implementation plan、实现代码或修复。
 - 用户可见页面或流程变更时，Root 绕过 `superpowers:brainstorming` 的设计确认，只写行为合同。
-- Generator 遇到后端、前端、配置/文档等清晰独立任务仍全部串行，且不说明不并行理由。
 - 当前运行目录的 `package_review.json` 未 `APPROVED` 就加载执行类 skill。
 - 复用旧 `.loop3e/verdict.json` 或根目录 report/package_review 作为当前运行证据。
 - 把建议项、审美偏好或流程不完整当作目标产物质量阻塞项。

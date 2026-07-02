@@ -66,8 +66,9 @@ P9 独立代码审查
 - 没有证据不能 PASS。
 - 准出条件缺失、不完整、不可执行或弱化原始需求时返回 SPEC_ISSUE。
 - Final PASS 必须基于本轮证据满足准出条件。
-- 必须检查测试是否覆盖主要路径、异常路径和边界条件。
-- 只有 happy path、无断言或表面覆盖的测试不能单独支撑 PASS。
+- 用户可见 UI 变更缺少截图、录屏、真实渲染窗口或用户确认证据时不得 PASS；按缺口性质返回 FAIL、ASK_USER 或 SPEC_ISSUE。
+- 必须检查测试、检查或人工探测证据是否覆盖主要路径、异常路径和边界条件。
+- 只有 happy path 或无结果检查的证据不能单独支撑 PASS。
 - 必须覆盖 Root 写入的 PENDING verdict，输出本轮新 verdict。
 - 不要编造 `evaluated_at` / timestamp；如需要写时间，必须先用命令读取当前时间，或省略该字段。Root 只按文件 mtime 判断 freshness。
 - 验收标准不可验证时返回 SPEC_ISSUE。
